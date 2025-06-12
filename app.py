@@ -285,7 +285,7 @@ def main():
         
         if not table_file_provided:
             # Special export options for columns-only mode
-            st.info("📂 Columns-only mode: Generate 20 separate Excel files for easy processing")
+            st.info("📂 Columns-only mode: Multiple export options available")
             
             download_col1, download_col2, download_col3 = st.columns(3)
             
@@ -322,6 +322,26 @@ def main():
                     )
             
             with download_col2:
+                if st.button("📊 Export Single Excel File", type="primary"):
+                    with st.spinner("Creating Excel file with all processed data..."):
+                        report_gen = ReportGenerator()
+                        excel_data = report_gen.create_excel_export(processed_df, stats)
+                        st.session_state.single_excel_data = excel_data
+                    
+                    original_cols = len([col for col in processed_df.columns if col != 'matched'])
+                    st.success("Excel file created successfully!")
+                    st.info(f"File includes all {len(processed_df)} records with {original_cols} original columns")
+                    
+                    # Download button for single Excel file
+                    st.download_button(
+                        label="📄 Download Complete Excel File",
+                        data=st.session_state.single_excel_data,
+                        file_name="demographic_analysis_complete.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        help="Complete processed data in Excel format with all original columns"
+                    )
+            
+            with download_col3:
                 # Create CSV file for download
                 report_gen = ReportGenerator()
                 csv_data = report_gen.create_csv_export(processed_df)
@@ -333,8 +353,7 @@ def main():
                     mime="text/csv",
                     help="Processed data in CSV format for easy import"
                 )
-            
-            with download_col3:
+                
                 # Generate HTML analysis report
                 if st.button("📊 Generate Analysis Report", type="secondary"):
                     with st.spinner("Generating comprehensive analysis report..."):
