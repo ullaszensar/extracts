@@ -128,29 +128,37 @@ class DataProcessor:
     
     def _extract_demographic_data(self, columns_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Extract demographic columns and data from the columns DataFrame
+        Extract demographic rows from the columns DataFrame while preserving all columns
         
         Args:
             columns_df: Columns data DataFrame
             
         Returns:
-            DataFrame containing only demographic data
+            DataFrame containing demographic rows with all original columns preserved
         """
         # First try to identify demographic rows by attr_description column
         if 'attr_description' in columns_df.columns:
             demographic_mask = self._identify_demographic_rows_by_description(columns_df, 'attr_description')
             
             if demographic_mask.any():
-                # Return rows where demographic content was found in attr_description
+                # Return rows where demographic content was found, keeping ALL columns
                 return columns_df[demographic_mask].copy()
         
-        # Fallback: identify demographic columns by column names
-        demographic_columns = self._identify_demographic_columns(columns_df.columns)
+        # Fallback: identify demographic rows by checking all column content
+        demographic_mask = pd.Series([False] * len(columns_df), index=columns_df.index)
         
-        if demographic_columns:
-            # Include all rows but only demographic columns
-            result_df = columns_df[demographic_columns].copy()
-            return result_df
+        for idx, row in columns_df.iterrows():
+            # Check all text columns for demographic content
+            for col in columns_df.columns:
+                cell_value = str(row[col])
+                if cell_value and cell_value.lower() != 'nan':
+                    if self._fuzzy_match_demographic(cell_value, self.demographic_data_types + self.demographic_keywords):
+                        demographic_mask[idx] = True
+                        break
+        
+        if demographic_mask.any():
+            # Return matching rows with ALL original columns preserved
+            return columns_df[demographic_mask].copy()
         
         # If no demographic data found, return empty DataFrame
         return pd.DataFrame()
@@ -247,10 +255,15 @@ class DataProcessor:
         Returns:
             Dictionary containing processing statistics
         """
+        # Get all original columns (excluding added processing columns)
+        original_columns = [col for col in merged_df.columns if col not in ['table_name', 'matched']]
+        
         summary = {
             'total_records': len(merged_df),
-            'demographic_columns': [col for col in merged_df.columns if col not in ['table_name', 'matched']],
-            'demographic_column_count': len([col for col in merged_df.columns if col not in ['table_name', 'matched']]),
+            'original_columns': original_columns,
+            'original_column_count': len(original_columns),
+            'demographic_columns': original_columns,  # All original columns are preserved
+            'demographic_column_count': len(original_columns),
             'matched_records': merged_df['matched'].sum() if 'matched' in merged_df.columns else len(merged_df),
             'unmatched_records': len(merged_df) - (merged_df['matched'].sum() if 'matched' in merged_df.columns else len(merged_df)),
             'processing_algorithm': self.fuzzy_algorithm,

@@ -298,12 +298,14 @@ def main():
             
             with download_col1:
                 if st.button("📊 Generate 20 Excel Files", type="primary"):
-                    with st.spinner("Creating 20 Excel files..."):
+                    with st.spinner("Creating 20 Excel files with all original columns preserved..."):
                         report_gen = ReportGenerator()
                         excel_files = report_gen.create_multiple_excel_files(processed_df)
                         st.session_state.excel_files = excel_files
                     
+                    original_cols = len([col for col in processed_df.columns if col not in ['table_name', 'matched']])
                     st.success(f"Generated {len(excel_files)} Excel files ready for download!")
+                    st.info(f"Each file preserves all {original_cols} original columns from your data")
                     
                     # Display download buttons for each file
                     st.subheader("📥 Download Individual Files")
@@ -318,7 +320,7 @@ def main():
                                 file_name=filename,
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                 key=f"download_{idx}",
-                                help=f"Download {filename}"
+                                help=f"Download {filename} with all original columns"
                             )
             
             with download_col2:

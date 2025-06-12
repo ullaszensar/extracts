@@ -606,7 +606,7 @@ class ReportGenerator:
                         'Total Records in File',
                         'File Number',
                         'Records Range',
-                        'Demographic Columns Found'
+                        'Original Columns Preserved'
                     ],
                     'Value': [
                         len(chunk_data),
