@@ -3,6 +3,7 @@ import pandas as pd
 import io
 from data_processor import DataProcessor
 from utils import validate_excel_file, create_download_link
+from report_generator import ReportGenerator
 
 def main():
     st.title("Excel Data Processing Application")
@@ -292,24 +293,66 @@ def main():
         # Download section
         st.subheader("💾 Download Results")
         
-        # Create Excel file for download
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            processed_df.to_excel(writer, sheet_name='Processed_Data', index=False)
+        download_col1, download_col2 = st.columns(2)
         
-        excel_data = output.getvalue()
+        with download_col1:
+            # Create comprehensive Excel file for download
+            report_gen = ReportGenerator()
+            excel_data = report_gen.create_excel_export(processed_df, stats)
+            
+            st.download_button(
+                label="📥 Download Complete Excel Report",
+                data=excel_data,
+                file_name="demographic_analysis_complete.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                help="Multi-sheet Excel file with processed data, statistics, and analysis"
+            )
         
-        st.download_button(
-            label="📥 Download Processed Data as Excel",
-            data=excel_data,
-            file_name="processed_demographic_data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        with download_col2:
+            # Generate HTML analysis report
+            if st.button("📊 Generate Analysis Report", type="secondary"):
+                with st.spinner("Generating comprehensive analysis report..."):
+                    report_gen = ReportGenerator()
+                    fuzzy_alg = st.session_state.get('fuzzy_algorithm', 'ratio')
+                    fuzzy_thresh = st.session_state.get('fuzzy_threshold', 80)
+                    
+                    html_report = report_gen.generate_report(
+                        processed_df, 
+                        stats, 
+                        fuzzy_alg, 
+                        fuzzy_thresh
+                    )
+                    
+                    st.session_state.html_report = html_report
+                    st.success("Analysis report generated successfully!")
+                    st.rerun()
+        
+        # Display HTML report if generated
+        if 'html_report' in st.session_state and st.session_state.html_report:
+            st.divider()
+            st.subheader("📋 Analysis Report Preview")
+            
+            # Download HTML report
+            st.download_button(
+                label="📄 Download HTML Analysis Report",
+                data=st.session_state.html_report.encode('utf-8'),
+                file_name="demographic_analysis_report.html",
+                mime="text/html",
+                help="Complete analysis report with charts and detailed statistics"
+            )
+            
+            # Display report in expander
+            with st.expander("📖 View Report Content", expanded=False):
+                st.markdown("**Report Preview:**")
+                st.info("📊 The complete HTML report includes interactive charts, detailed statistics, and comprehensive analysis tables. Download the HTML file to view the full interactive report.")
         
         # Option to reset and process new files
         if st.button("🔄 Process New Files"):
             st.session_state.processed_data = None
             st.session_state.processing_complete = False
+            st.session_state.processing_stats = None
+            if 'html_report' in st.session_state:
+                del st.session_state.html_report
             st.rerun()
     
     # Help section
@@ -322,10 +365,16 @@ def main():
         3. **Configure Processing**: 
            - Specify the column names for storage_id in both files
            - Specify the table name column in the table data file
-           - Define demographic keywords to identify relevant columns
-        4. **Process Data**: Click the process button to extract and merge data
-        5. **Review Results**: Check the processed data and statistics
-        6. **Download**: Save the results as an Excel file
+           - Add custom demographic keywords if needed
+        4. **Configure Fuzzy Matching**:
+           - Select the fuzzy matching algorithm (ratio, partial_ratio, token_sort_ratio, token_set_ratio)
+           - Set the accuracy threshold percentage (50-100%)
+        5. **Process Data**: Click the process button to extract and merge data
+        6. **Review Results**: Check the processed data and detailed statistics
+        7. **Export Results**:
+           - Download complete Excel report with multiple sheets
+           - Generate comprehensive HTML analysis report with charts and graphs
+           - Export includes processing statistics, table distributions, and detailed breakdowns
         
         ### File Requirements:
         - Both files must be in Excel format (.xlsx or .xls)
