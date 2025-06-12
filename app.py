@@ -30,13 +30,16 @@ def main():
         
         if table_file:
             if validate_excel_file(table_file):
-                st.success("✅ Valid file uploaded")
-                # Preview table data
                 try:
+                    # Get full file info for row count
                     if table_file.name.lower().endswith('.csv'):
-                        df_preview = pd.read_csv(table_file, nrows=5)
+                        df_full = pd.read_csv(table_file)
+                        df_preview = df_full.head(5)
                     else:
-                        df_preview = pd.read_excel(table_file, nrows=5)
+                        df_full = pd.read_excel(table_file)
+                        df_preview = df_full.head(5)
+                    
+                    st.success(f"✅ Table file loaded successfully with **{len(df_full)} rows** and **{len(df_full.columns)} columns**")
                     st.write("**Preview (first 5 rows):**")
                     st.dataframe(df_preview)
                 except Exception as e:
@@ -56,13 +59,16 @@ def main():
         
         if columns_file:
             if validate_excel_file(columns_file):
-                st.success("✅ Valid file uploaded")
-                # Preview columns data
                 try:
+                    # Get full file info for row count
                     if columns_file.name.lower().endswith('.csv'):
-                        df_preview = pd.read_csv(columns_file, nrows=5)
+                        df_full = pd.read_csv(columns_file)
+                        df_preview = df_full.head(5)
                     else:
-                        df_preview = pd.read_excel(columns_file, nrows=5)
+                        df_full = pd.read_excel(columns_file)
+                        df_preview = df_full.head(5)
+                    
+                    st.success(f"✅ Columns file loaded successfully with **{len(df_full)} rows** and **{len(df_full.columns)} columns**")
                     st.write("**Preview (first 5 rows):**")
                     st.dataframe(df_preview)
                 except Exception as e:
@@ -427,27 +433,26 @@ def main():
         st.markdown("""
         ### How to use this application:
         
-        1. **Upload Columns Data File** (Required): This should contain demographic information with attr_description column
-        2. **Upload Table Data File** (Optional): This can contain table names and their corresponding storage_id values for merging
+        1. **Upload Columns Data File** (Required): Excel or CSV file containing demographic information
+        2. **Upload Table Data File** (Optional): Additional table information for reference
         3. **Configure Processing**: 
-           - If table file is uploaded: Specify column names for storage_id in both files and table name column
-           - If only columns file: Specify storage_id column name in columns data
            - Add custom demographic keywords if needed
+           - The system automatically detects demographic data from attr_description column content
         4. **Configure Fuzzy Matching**:
            - Select the fuzzy matching algorithm (ratio, partial_ratio, token_sort_ratio, token_set_ratio)
            - Set the accuracy threshold percentage (50-100%)
-        5. **Process Data**: Click the process button to extract demographic data from attr_description column
-        6. **Review Results**: Check the processed data and detailed statistics
+        5. **Process Data**: Extract demographic data using intelligent content analysis
+        6. **Review Results**: View processed data with row counts and statistics
         7. **Export Results**:
-           - Download complete Excel report with multiple sheets
+           - Generate 20 separate Excel files for easy processing (columns-only mode)
            - Download CSV data for easy import
            - Generate comprehensive HTML analysis report with charts and graphs
         
         ### File Requirements:
-        - Columns file must be in Excel (.xlsx, .xls) or CSV (.csv) format (Required)
-        - Table file must be in Excel (.xlsx, .xls) or CSV (.csv) format (Optional)
+        - Columns file: Excel (.xlsx, .xls) or CSV (.csv) format (Required)
+        - Table file: Excel (.xlsx, .xls) or CSV (.csv) format (Optional)
         - Column names should be in the first row
-        - attr_description column is highly recommended for best demographic detection
+        - attr_description column provides the best demographic detection results
         
         ### Demographic Detection:
         The application uses two methods to identify demographic data:
