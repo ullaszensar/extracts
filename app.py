@@ -118,6 +118,7 @@ def main():
                     
                     if result['success']:
                         st.session_state.processed_data = result['data']
+                        st.session_state.processing_stats = result.get('stats', {})
                         st.session_state.processing_complete = True
                         st.success("✅ Data processed successfully!")
                         st.rerun()
@@ -134,22 +135,88 @@ def main():
         
         processed_df = st.session_state.processed_data
         
-        # Display statistics
-        col_stats1, col_stats2, col_stats3 = st.columns(3)
+        # Get processing statistics
+        stats = st.session_state.get('processing_stats', {})
+        
+        # Display main statistics
+        col_stats1, col_stats2, col_stats3, col_stats4 = st.columns(4)
         
         with col_stats1:
-            st.metric("Total Records", len(processed_df))
+            st.metric("Total Input Rows", stats.get('original_columns_total', 0))
         
         with col_stats2:
+            st.metric("Demographic Rows Extracted", stats.get('demographic_rows_extracted', 0))
+        
+        with col_stats3:
+            st.metric("Non-Demographic Rows", stats.get('non_demographic_rows', 0))
+        
+        with col_stats4:
+            extraction_pct = stats.get('extraction_percentage', 0)
+            st.metric("Extraction Rate", f"{extraction_pct}%")
+        
+        # Additional statistics
+        st.divider()
+        col_extra1, col_extra2, col_extra3 = st.columns(3)
+        
+        with col_extra1:
+            st.metric("Final Processed Records", len(processed_df))
+        
+        with col_extra2:
             unique_tables = processed_df['table_name'].nunique() if 'table_name' in processed_df.columns else 0
             st.metric("Unique Tables", unique_tables)
         
-        with col_stats3:
-            demographic_cols = [col for col in processed_df.columns if any(keyword in col.lower() for keyword in demographic_list)]
-            st.metric("Demographic Columns", len(demographic_cols))
+        with col_extra3:
+            matched_records = stats.get('matched_records', 0)
+            st.metric("Successfully Matched", matched_records)
+        
+        # Detailed breakdown section
+        st.subheader("📊 Detailed Extraction Breakdown")
+        
+        breakdown_col1, breakdown_col2 = st.columns(2)
+        
+        with breakdown_col1:
+            st.write("**Data Flow Summary:**")
+            original_total = stats.get('original_columns_total', 0)
+            extracted = stats.get('demographic_rows_extracted', 0)
+            non_demo = stats.get('non_demographic_rows', 0)
+            final_count = len(processed_df)
+            
+            st.write(f"• Started with: **{original_total}** total rows in columns file")
+            st.write(f"• Found demographic data in: **{extracted}** rows")
+            st.write(f"• Non-demographic rows: **{non_demo}** rows")
+            st.write(f"• Final processed records: **{final_count}** rows")
+            
+            if extracted > 0:
+                st.write(f"• Extraction efficiency: **{stats.get('extraction_percentage', 0)}%**")
+        
+        with breakdown_col2:
+            st.write("**Demographic Columns Found:**")
+            demo_cols = stats.get('demographic_column_names', [])
+            if demo_cols:
+                for i, col in enumerate(demo_cols, 1):
+                    st.write(f"{i}. {col}")
+            else:
+                st.write("No demographic columns identified")
+        
+        # Matching statistics
+        if 'matched' in processed_df.columns:
+            matched_count = processed_df['matched'].sum()
+            unmatched_count = len(processed_df) - matched_count
+            
+            st.write("**Storage ID Matching Results:**")
+            match_col1, match_col2 = st.columns(2)
+            
+            with match_col1:
+                st.write(f"• Successfully matched: **{matched_count}** records")
+                st.write(f"• Unmatched records: **{unmatched_count}** records")
+            
+            with match_col2:
+                if len(processed_df) > 0:
+                    match_rate = (matched_count / len(processed_df)) * 100
+                    st.write(f"• Match rate: **{match_rate:.1f}%**")
         
         # Display the processed data
-        st.write("**Processed Data:**")
+        st.subheader("📋 Processed Data")
         st.dataframe(processed_df, use_container_width=True)
         
         # Download section

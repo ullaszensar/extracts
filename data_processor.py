@@ -40,6 +40,10 @@ class DataProcessor:
             table_df = self._read_excel_file(table_file, "table data")
             columns_df = self._read_excel_file(columns_file, "columns data")
             
+            # Store original data statistics
+            original_columns_total = len(columns_df)
+            original_table_total = len(table_df)
+            
             # Validate required columns exist
             validation_result = self._validate_columns(table_df, columns_df)
             if not validation_result['valid']:
@@ -51,10 +55,26 @@ class DataProcessor:
             if demographic_data.empty:
                 return {'success': False, 'error': 'No demographic data found in columns file'}
             
+            # Calculate extraction statistics
+            demographic_rows_extracted = len(demographic_data)
+            non_demographic_rows = original_columns_total - demographic_rows_extracted
+            
             # Merge with table names
             merged_data = self._merge_with_table_names(demographic_data, table_df)
             
-            return {'success': True, 'data': merged_data}
+            # Generate processing summary
+            processing_stats = self.get_processing_summary(merged_data)
+            processing_stats['original_columns_total'] = original_columns_total
+            processing_stats['original_table_total'] = original_table_total
+            processing_stats['demographic_rows_extracted'] = demographic_rows_extracted
+            processing_stats['non_demographic_rows'] = non_demographic_rows
+            processing_stats['extraction_percentage'] = round((demographic_rows_extracted / original_columns_total) * 100, 2) if original_columns_total > 0 else 0
+            
+            return {
+                'success': True, 
+                'data': merged_data,
+                'stats': processing_stats
+            }
             
         except Exception as e:
             return {'success': False, 'error': f'Processing error: {str(e)}'}
@@ -144,12 +164,12 @@ class DataProcessor:
         
         return demographic_df
     
-    def _identify_demographic_columns(self, columns: List[str]) -> List[str]:
+    def _identify_demographic_columns(self, columns) -> List[str]:
         """
         Identify which columns contain demographic information based on keywords
         
         Args:
-            columns: List of column names to check
+            columns: List or Index of column names to check
             
         Returns:
             List of column names that match demographic keywords
@@ -157,7 +177,7 @@ class DataProcessor:
         demographic_cols = []
         
         for col in columns:
-            col_lower = col.lower()
+            col_lower = str(col).lower()
             # Check if any demographic keyword is in the column name
             if any(keyword in col_lower for keyword in self.demographic_keywords):
                 demographic_cols.append(col)
@@ -177,7 +197,7 @@ class DataProcessor:
         """
         # Create a mapping of storage_id to table_name
         table_mapping = table_df[[self.storage_id_col_table, self.table_name_col]].copy()
-        table_mapping = table_mapping.drop_duplicates(subset=[self.storage_id_col_table])
+        table_mapping = table_mapping.drop_duplicates(subset=self.storage_id_col_table)
         
         # Rename columns for merging
         table_mapping = table_mapping.rename(columns={
