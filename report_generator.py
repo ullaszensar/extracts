@@ -551,3 +551,17 @@ class ReportGenerator:
                 demo_df.to_excel(writer, sheet_name='Demographic_Columns', index=False)
         
         return output.getvalue()
+    
+    def create_csv_export(self, processed_data: pd.DataFrame) -> bytes:
+        """
+        Create CSV file for export
+        
+        Args:
+            processed_data: The processed demographic data
+            
+        Returns:
+            CSV file as bytes
+        """
+        output = io.StringIO()
+        processed_data.to_csv(output, index=False)
+        return output.getvalue().encode('utf-8')

@@ -4,31 +4,42 @@ from typing import Any, Optional
 import base64
 import io
 
-def validate_excel_file(file) -> bool:
+def validate_file(file) -> bool:
     """
-    Validate if the uploaded file is a valid Excel file
+    Validate if the uploaded file is a valid Excel or CSV file
     
     Args:
         file: Uploaded file object
         
     Returns:
-        Boolean indicating if file is valid Excel format
+        Boolean indicating if file is valid Excel or CSV format
     """
     if file is None:
         return False
     
     # Check file extension
-    if not file.name.lower().endswith(('.xlsx', '.xls')):
+    if not file.name.lower().endswith(('.xlsx', '.xls', '.csv')):
         return False
     
     try:
-        # Try to read the file to ensure it's valid Excel
+        # Try to read the file to ensure it's valid
         file.seek(0)  # Reset file pointer
-        pd.read_excel(file, nrows=1)  # Read just one row to test
+        
+        if file.name.lower().endswith('.csv'):
+            pd.read_csv(file, nrows=1)  # Read just one row to test
+        else:
+            pd.read_excel(file, nrows=1)  # Read just one row to test
+            
         file.seek(0)  # Reset file pointer again
         return True
     except Exception:
         return False
+
+def validate_excel_file(file) -> bool:
+    """
+    Backward compatibility function - now validates both Excel and CSV
+    """
+    return validate_file(file)
 
 def create_download_link(df: pd.DataFrame, filename: str, link_text: str) -> str:
     """

@@ -22,47 +22,53 @@ def main():
         st.subheader("📊 Table Data File")
         st.markdown("Upload Excel file containing table information with storage_id")
         table_file = st.file_uploader(
-            "Choose table data Excel file",
-            type=['xlsx', 'xls'],
+            "Choose table data file",
+            type=['xlsx', 'xls', 'csv'],
             key="table_file",
-            help="This file should contain table names and their corresponding storage_id values"
+            help="This file should contain table names and their corresponding storage_id values. Supports Excel (.xlsx, .xls) and CSV (.csv) formats"
         )
         
         if table_file:
             if validate_excel_file(table_file):
-                st.success("✅ Valid Excel file uploaded")
+                st.success("✅ Valid file uploaded")
                 # Preview table data
                 try:
-                    df_preview = pd.read_excel(table_file, nrows=5)
+                    if table_file.name.lower().endswith('.csv'):
+                        df_preview = pd.read_csv(table_file, nrows=5)
+                    else:
+                        df_preview = pd.read_excel(table_file, nrows=5)
                     st.write("**Preview (first 5 rows):**")
                     st.dataframe(df_preview)
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
             else:
-                st.error("❌ Invalid file format. Please upload an Excel file (.xlsx or .xls)")
+                st.error("❌ Invalid file format. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file")
     
     with col2:
         st.subheader("📋 Columns Data File")
-        st.markdown("Upload Excel file containing demographic data with storage_id")
+        st.markdown("Upload file containing demographic data with storage_id")
         columns_file = st.file_uploader(
-            "Choose columns data Excel file",
-            type=['xlsx', 'xls'],
+            "Choose columns data file",
+            type=['xlsx', 'xls', 'csv'],
             key="columns_file",
-            help="This file should contain demographic information and storage_id for matching"
+            help="This file should contain demographic information and storage_id for matching. Supports Excel (.xlsx, .xls) and CSV (.csv) formats"
         )
         
         if columns_file:
             if validate_excel_file(columns_file):
-                st.success("✅ Valid Excel file uploaded")
+                st.success("✅ Valid file uploaded")
                 # Preview columns data
                 try:
-                    df_preview = pd.read_excel(columns_file, nrows=5)
+                    if columns_file.name.lower().endswith('.csv'):
+                        df_preview = pd.read_csv(columns_file, nrows=5)
+                    else:
+                        df_preview = pd.read_excel(columns_file, nrows=5)
                     st.write("**Preview (first 5 rows):**")
                     st.dataframe(df_preview)
                 except Exception as e:
                     st.error(f"Error reading file: {str(e)}")
             else:
-                st.error("❌ Invalid file format. Please upload an Excel file (.xlsx or .xls)")
+                st.error("❌ Invalid file format. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file")
     
     # Processing section
     if table_file and columns_file:
@@ -293,7 +299,7 @@ def main():
         # Download section
         st.subheader("💾 Download Results")
         
-        download_col1, download_col2 = st.columns(2)
+        download_col1, download_col2, download_col3 = st.columns(3)
         
         with download_col1:
             # Create comprehensive Excel file for download
@@ -301,7 +307,7 @@ def main():
             excel_data = report_gen.create_excel_export(processed_df, stats)
             
             st.download_button(
-                label="📥 Download Complete Excel Report",
+                label="📥 Download Excel Report",
                 data=excel_data,
                 file_name="demographic_analysis_complete.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -309,6 +315,18 @@ def main():
             )
         
         with download_col2:
+            # Create CSV file for download
+            csv_data = report_gen.create_csv_export(processed_df)
+            
+            st.download_button(
+                label="📄 Download CSV Data",
+                data=csv_data,
+                file_name="demographic_analysis_data.csv",
+                mime="text/csv",
+                help="Processed data in CSV format for easy import"
+            )
+        
+        with download_col3:
             # Generate HTML analysis report
             if st.button("📊 Generate Analysis Report", type="secondary"):
                 with st.spinner("Generating comprehensive analysis report..."):
@@ -377,7 +395,7 @@ def main():
            - Export includes processing statistics, table distributions, and detailed breakdowns
         
         ### File Requirements:
-        - Both files must be in Excel format (.xlsx or .xls)
+        - Both files must be in Excel (.xlsx, .xls) or CSV (.csv) format
         - Files must contain the specified storage_id columns for matching
         - Column names should be in the first row
         

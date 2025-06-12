@@ -120,9 +120,9 @@ class DataProcessor:
         except Exception as e:
             return {'success': False, 'error': f'Processing error: {str(e)}'}
     
-    def _read_excel_file(self, file, file_type: str) -> pd.DataFrame:
+    def _read_file(self, file, file_type: str) -> pd.DataFrame:
         """
-        Read Excel file and handle potential errors
+        Read Excel or CSV file and handle potential errors
         
         Args:
             file: File object to read
@@ -134,7 +134,12 @@ class DataProcessor:
         try:
             # Reset file pointer to beginning
             file.seek(0)
-            df = pd.read_excel(file)
+            
+            # Determine file type and read accordingly
+            if file.name.lower().endswith('.csv'):
+                df = pd.read_csv(file)
+            else:
+                df = pd.read_excel(file)
             
             if df.empty:
                 raise ValueError(f"{file_type} file is empty")
@@ -143,6 +148,12 @@ class DataProcessor:
             
         except Exception as e:
             raise ValueError(f"Error reading {file_type} file: {str(e)}")
+    
+    def _read_excel_file(self, file, file_type: str) -> pd.DataFrame:
+        """
+        Backward compatibility function - now reads both Excel and CSV
+        """
+        return self._read_file(file, file_type)
     
     def _validate_columns(self, table_df: pd.DataFrame, columns_df: pd.DataFrame) -> Dict[str, Any]:
         """
