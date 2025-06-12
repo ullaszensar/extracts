@@ -565,3 +565,61 @@ class ReportGenerator:
         output = io.StringIO()
         processed_data.to_csv(output, index=False)
         return output.getvalue().encode('utf-8')
+    
+    def create_multiple_excel_files(self, processed_data: pd.DataFrame, records_per_file: int = None) -> List[tuple]:
+        """
+        Create multiple Excel files with demographic data split across them
+        
+        Args:
+            processed_data: The processed demographic data
+            records_per_file: Number of records per file (if None, splits into 20 files)
+            
+        Returns:
+            List of tuples containing (filename, file_bytes)
+        """
+        if records_per_file is None:
+            # Split into 20 files
+            total_records = len(processed_data)
+            records_per_file = max(1, total_records // 20)
+            if total_records % 20 > 0:
+                records_per_file += 1
+        
+        files = []
+        total_records = len(processed_data)
+        
+        for i in range(0, total_records, records_per_file):
+            file_num = (i // records_per_file) + 1
+            chunk_data = processed_data.iloc[i:i + records_per_file].copy()
+            
+            if chunk_data.empty:
+                continue
+            
+            # Create Excel file for this chunk
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                # Main data sheet
+                chunk_data.to_excel(writer, sheet_name='Demographic_Data', index=False)
+                
+                # Summary sheet
+                summary_data = {
+                    'Metric': [
+                        'Total Records in File',
+                        'File Number',
+                        'Records Range',
+                        'Demographic Columns Found'
+                    ],
+                    'Value': [
+                        len(chunk_data),
+                        file_num,
+                        f"{i+1} to {min(i + records_per_file, total_records)}",
+                        len([col for col in chunk_data.columns if col not in ['table_name', 'matched']])
+                    ]
+                }
+                
+                summary_df = pd.DataFrame(summary_data)
+                summary_df.to_excel(writer, sheet_name='Summary', index=False)
+            
+            filename = f"demographic_data_part_{file_num:02d}.xlsx"
+            files.append((filename, output.getvalue()))
+        
+        return files

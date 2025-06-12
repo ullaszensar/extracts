@@ -114,8 +114,11 @@ class DataProcessor:
             if table_df is not None:
                 merged_data = self._merge_with_table_names(demographic_data, table_df)
             else:
-                # Use demographic data as-is without table name merging
+                # Use demographic data as-is without table name merging or storage_id
                 merged_data = demographic_data.copy()
+                # Remove storage_id column if it exists since we don't need it for columns-only processing
+                if self.storage_id_col_columns in merged_data.columns:
+                    merged_data = merged_data.drop(columns=[self.storage_id_col_columns])
                 merged_data['table_name'] = 'N/A'
                 merged_data['matched'] = True  # All records are considered "matched" since no table matching is needed
             
@@ -207,6 +210,7 @@ class DataProcessor:
     def _validate_columns_only(self, columns_df: pd.DataFrame) -> Dict[str, Any]:
         """
         Validate that required columns exist in columns DataFrame only
+        When no table file is provided, we don't require storage_id column
         
         Args:
             columns_df: Columns data DataFrame
@@ -214,11 +218,12 @@ class DataProcessor:
         Returns:
             Dictionary with validation result and error message if any
         """
-        # Check columns data
-        if self.storage_id_col_columns not in columns_df.columns:
+        # When processing only columns file, we don't require storage_id
+        # Just check that we have some data to work with
+        if columns_df.empty:
             return {
                 'valid': False,
-                'error': f"Column '{self.storage_id_col_columns}' not found in columns data. Available columns: {list(columns_df.columns)}"
+                'error': "Columns data file is empty"
             }
         
         return {'valid': True}

@@ -112,22 +112,13 @@ def main():
             
             storage_id_col_table = "storage_id"  # Default value when no table file
             table_name_col = "table_name"  # Default value when no table file
+            storage_id_col_columns = "storage_id"  # Default value when no table file
             
-            col_single1, col_single2 = st.columns(2)
-            
-            with col_single1:
-                storage_id_col_columns = st.text_input(
-                    "Storage ID column name in columns data",
-                    value="storage_id",
-                    help="The column name that contains storage_id in the columns data file"
-                )
-            
-            with col_single2:
-                demographic_keywords = st.text_area(
-                    "Additional demographic keywords (one per line)",
-                    value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
-                    help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
-                )
+            demographic_keywords = st.text_area(
+                "Additional demographic keywords (one per line)",
+                value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
+                help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
+            )
         
         # Fuzzy matching configuration
         st.subheader("🔍 Fuzzy Matching Configuration")
@@ -211,6 +202,7 @@ def main():
                         st.session_state.processing_stats = result.get('stats', {})
                         st.session_state.fuzzy_algorithm = fuzzy_algorithm
                         st.session_state.fuzzy_threshold = fuzzy_threshold
+                        st.session_state.table_file_provided = table_file is not None
                         st.session_state.processing_complete = True
                         st.success("✅ Data processed successfully!")
                         st.rerun()
@@ -323,51 +315,118 @@ def main():
         # Download section
         st.subheader("💾 Download Results")
         
-        download_col1, download_col2, download_col3 = st.columns(3)
+        # Check if this is columns-only mode (no table file)
+        table_file_provided = st.session_state.get('table_file_provided', False)
         
-        with download_col1:
-            # Create comprehensive Excel file for download
-            report_gen = ReportGenerator()
-            excel_data = report_gen.create_excel_export(processed_df, stats)
+        if not table_file_provided:
+            # Special export options for columns-only mode
+            st.info("📂 Columns-only mode: Generate 20 separate Excel files for easy processing")
             
-            st.download_button(
-                label="📥 Download Excel Report",
-                data=excel_data,
-                file_name="demographic_analysis_complete.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                help="Multi-sheet Excel file with processed data, statistics, and analysis"
-            )
-        
-        with download_col2:
-            # Create CSV file for download
-            csv_data = report_gen.create_csv_export(processed_df)
+            download_col1, download_col2, download_col3 = st.columns(3)
             
-            st.download_button(
-                label="📄 Download CSV Data",
-                data=csv_data,
-                file_name="demographic_analysis_data.csv",
-                mime="text/csv",
-                help="Processed data in CSV format for easy import"
-            )
-        
-        with download_col3:
-            # Generate HTML analysis report
-            if st.button("📊 Generate Analysis Report", type="secondary"):
-                with st.spinner("Generating comprehensive analysis report..."):
-                    report_gen = ReportGenerator()
-                    fuzzy_alg = st.session_state.get('fuzzy_algorithm', 'ratio')
-                    fuzzy_thresh = st.session_state.get('fuzzy_threshold', 80)
+            with download_col1:
+                if st.button("📊 Generate 20 Excel Files", type="primary"):
+                    with st.spinner("Creating 20 Excel files..."):
+                        report_gen = ReportGenerator()
+                        excel_files = report_gen.create_multiple_excel_files(processed_df)
+                        st.session_state.excel_files = excel_files
                     
-                    html_report = report_gen.generate_report(
-                        processed_df, 
-                        stats, 
-                        fuzzy_alg, 
-                        fuzzy_thresh
-                    )
+                    st.success(f"Generated {len(excel_files)} Excel files ready for download!")
                     
-                    st.session_state.html_report = html_report
-                    st.success("Analysis report generated successfully!")
-                    st.rerun()
+                    # Display download buttons for each file
+                    st.subheader("📥 Download Individual Files")
+                    cols = st.columns(4)  # 4 columns for better layout
+                    
+                    for idx, (filename, file_data) in enumerate(excel_files):
+                        col_idx = idx % 4
+                        with cols[col_idx]:
+                            st.download_button(
+                                label=f"📄 Part {idx+1:02d}",
+                                data=file_data,
+                                file_name=filename,
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                key=f"download_{idx}",
+                                help=f"Download {filename}"
+                            )
+            
+            with download_col2:
+                # Create CSV file for download
+                report_gen = ReportGenerator()
+                csv_data = report_gen.create_csv_export(processed_df)
+                
+                st.download_button(
+                    label="📄 Download CSV Data",
+                    data=csv_data,
+                    file_name="demographic_analysis_data.csv",
+                    mime="text/csv",
+                    help="Processed data in CSV format for easy import"
+                )
+            
+            with download_col3:
+                # Generate HTML analysis report
+                if st.button("📊 Generate Analysis Report", type="secondary"):
+                    with st.spinner("Generating comprehensive analysis report..."):
+                        report_gen = ReportGenerator()
+                        fuzzy_alg = st.session_state.get('fuzzy_algorithm', 'ratio')
+                        fuzzy_thresh = st.session_state.get('fuzzy_threshold', 80)
+                        
+                        html_report = report_gen.generate_report(
+                            processed_df, 
+                            stats, 
+                            fuzzy_alg, 
+                            fuzzy_thresh
+                        )
+                        
+                        st.session_state.html_report = html_report
+                        st.success("Analysis report generated successfully!")
+                        st.rerun()
+        else:
+            # Standard export options when table file is provided
+            download_col1, download_col2, download_col3 = st.columns(3)
+            
+            with download_col1:
+                # Create comprehensive Excel file for download
+                report_gen = ReportGenerator()
+                excel_data = report_gen.create_excel_export(processed_df, stats)
+                
+                st.download_button(
+                    label="📥 Download Excel Report",
+                    data=excel_data,
+                    file_name="demographic_analysis_complete.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    help="Multi-sheet Excel file with processed data, statistics, and analysis"
+                )
+            
+            with download_col2:
+                # Create CSV file for download
+                csv_data = report_gen.create_csv_export(processed_df)
+                
+                st.download_button(
+                    label="📄 Download CSV Data",
+                    data=csv_data,
+                    file_name="demographic_analysis_data.csv",
+                    mime="text/csv",
+                    help="Processed data in CSV format for easy import"
+                )
+            
+            with download_col3:
+                # Generate HTML analysis report
+                if st.button("📊 Generate Analysis Report", type="secondary"):
+                    with st.spinner("Generating comprehensive analysis report..."):
+                        report_gen = ReportGenerator()
+                        fuzzy_alg = st.session_state.get('fuzzy_algorithm', 'ratio')
+                        fuzzy_thresh = st.session_state.get('fuzzy_threshold', 80)
+                        
+                        html_report = report_gen.generate_report(
+                            processed_df, 
+                            stats, 
+                            fuzzy_alg, 
+                            fuzzy_thresh
+                        )
+                        
+                        st.session_state.html_report = html_report
+                        st.success("Analysis report generated successfully!")
+                        st.rerun()
         
         # Display HTML report if generated
         if 'html_report' in st.session_state and st.session_state.html_report:
