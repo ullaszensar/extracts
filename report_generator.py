@@ -218,6 +218,13 @@ class ReportGenerator:
             </div>
         </div>
 
+        <div class="section">
+            <h2>Algorithm Details</h2>
+            <div class="algorithm-details">
+                {{ algorithm_details }}
+            </div>
+        </div>
+
         {% if demographic_columns %}
         <div class="section">
             <h2>Demographic Data Types Found</h2>
@@ -341,6 +348,9 @@ class ReportGenerator:
         # Create table analysis table
         table_analysis_table = self._create_table_analysis_table(processed_data)
         
+        # Create algorithm details
+        algorithm_details = self._create_algorithm_details(processed_data, fuzzy_algorithm, fuzzy_threshold)
+        
         # Create sample data table
         sample_data_table = self._create_sample_data_table(processed_data)
         
@@ -360,6 +370,7 @@ class ReportGenerator:
             matching_chart=matching_chart,
             table_distribution_chart=table_distribution_chart,
             table_analysis_table=table_analysis_table,
+            algorithm_details=algorithm_details,
             demographic_columns=demographic_columns,
             col_categories=col_categories,
             sample_data_table=sample_data_table
@@ -509,6 +520,99 @@ class ReportGenerator:
         html += """
             </tbody>
         </table>
+        """
+        
+        return html
+    
+    def _create_algorithm_details(self, processed_data: pd.DataFrame, fuzzy_algorithm: str, fuzzy_threshold: int) -> str:
+        """Create detailed algorithm explanation with examples"""
+        
+        # Algorithm descriptions
+        algorithm_descriptions = {
+            'ratio': 'Simple ratio comparison that calculates the overall similarity between two strings',
+            'partial_ratio': 'Finds the best partial match within the strings, useful for substring matching',
+            'token_sort_ratio': 'Sorts tokens alphabetically before comparison, ignoring word order',
+            'token_set_ratio': 'Compares unique tokens between strings, ignoring duplicates and order'
+        }
+        
+        algorithm_desc = algorithm_descriptions.get(fuzzy_algorithm, 'Advanced string similarity matching')
+        
+        # Create examples from actual data if available
+        examples_html = ""
+        if 'attr_description' in processed_data.columns:
+            # Get some sample descriptions for examples
+            sample_descriptions = processed_data['attr_description'].dropna().head(3).tolist()
+            
+            # Demographic keywords for examples
+            demo_keywords = ['age', 'gender', 'race', 'ethnicity', 'sex', 'birth', 'demographic']
+            
+            examples_html = """
+            <h4>Matching Examples from Your Data:</h4>
+            <div class="examples-container">
+            """
+            
+            for i, desc in enumerate(sample_descriptions[:2]):
+                if len(str(desc)) > 10:  # Ensure it's a meaningful description
+                    # Calculate similarity with a demographic keyword
+                    from fuzzywuzzy import fuzz
+                    best_match = ""
+                    best_score = 0
+                    
+                    for keyword in demo_keywords:
+                        if fuzzy_algorithm == 'ratio':
+                            score = fuzz.ratio(str(desc).lower(), keyword)
+                        elif fuzzy_algorithm == 'partial_ratio':
+                            score = fuzz.partial_ratio(str(desc).lower(), keyword)
+                        elif fuzzy_algorithm == 'token_sort_ratio':
+                            score = fuzz.token_sort_ratio(str(desc).lower(), keyword)
+                        else:  # token_set_ratio
+                            score = fuzz.token_set_ratio(str(desc).lower(), keyword)
+                        
+                        if score > best_score:
+                            best_score = score
+                            best_match = keyword
+                    
+                    match_status = "✓ MATCH" if best_score >= fuzzy_threshold else "✗ NO MATCH"
+                    color = "#28a745" if best_score >= fuzzy_threshold else "#dc3545"
+                    
+                    examples_html += f"""
+                    <div class="example-item" style="border-left: 4px solid {color}; padding: 10px; margin: 10px 0; background: #f8f9fa;">
+                        <strong>Text:</strong> "{str(desc)[:80]}..."<br>
+                        <strong>Best Keyword Match:</strong> "{best_match}"<br>
+                        <strong>Similarity Score:</strong> {best_score}% <span style="color: {color}; font-weight: bold;">({match_status})</span>
+                    </div>
+                    """
+            
+            examples_html += "</div>"
+        
+        html = f"""
+        <div class="algorithm-info" style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3>Fuzzy Matching Algorithm: {fuzzy_algorithm.replace('_', ' ').title()}</h3>
+            
+            <div class="algorithm-description">
+                <h4>How It Works:</h4>
+                <p><strong>Algorithm:</strong> {algorithm_desc}</p>
+                <p><strong>Threshold:</strong> {fuzzy_threshold}% (minimum similarity required for a match)</p>
+                <p><strong>Process:</strong> The system analyzes the 'attr_description' column content and compares it against demographic keywords using fuzzy string matching. Any description with a similarity score above {fuzzy_threshold}% is classified as demographic data.</p>
+            </div>
+            
+            <div class="keywords-list">
+                <h4>Demographic Keywords Used:</h4>
+                <p style="font-style: italic;">age, gender, race, ethnicity, sex, birth, demographic, population, ancestry, nationality, heritage, origin, background</p>
+            </div>
+            
+            {examples_html}
+            
+            <div class="algorithm-benefits">
+                <h4>Why Fuzzy Matching?</h4>
+                <ul>
+                    <li><strong>Handles Typos:</strong> Finds matches even with spelling errors</li>
+                    <li><strong>Flexible Matching:</strong> Works with partial words and different formats</li>
+                    <li><strong>Configurable Precision:</strong> Adjustable threshold allows fine-tuning sensitivity</li>
+                    <li><strong>Context Aware:</strong> Considers word order and token relationships</li>
+                </ul>
+            </div>
+        </div>
         """
         
         return html
