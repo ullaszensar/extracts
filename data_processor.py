@@ -87,9 +87,7 @@ class DataProcessor:
             
             # Use demographic data as-is, preserving ALL original columns
             merged_data = demographic_data.copy()
-            # Only add metadata columns if they don't exist in original data
-            if 'table_name' not in merged_data.columns:
-                merged_data['table_name'] = 'N/A'
+            # Only add the 'matched' metadata column - preserve original 'table_name' if it exists
             if 'matched' not in merged_data.columns:
                 merged_data['matched'] = True
             

@@ -283,8 +283,8 @@ def main():
         # Display the processed data with original columns only
         st.subheader("📋 Processed Data")
         
-        # Filter to show only original columns from source file
-        original_columns_only = processed_df[[col for col in processed_df.columns if col not in ['table_name', 'matched']]]
+        # Show all original columns from the source file including table_name, attr_name, business_name, attr_description
+        original_columns_only = processed_df[[col for col in processed_df.columns if col != 'matched']]
         
         # Show column preservation info
         original_col_count = len(original_columns_only.columns)
@@ -311,9 +311,9 @@ def main():
                         excel_files = report_gen.create_multiple_excel_files(processed_df)
                         st.session_state.excel_files = excel_files
                     
-                    original_cols = len([col for col in processed_df.columns if col not in ['table_name', 'matched']])
+                    original_cols = len([col for col in processed_df.columns if col != 'matched'])
                     st.success(f"Generated {len(excel_files)} Excel files ready for download!")
-                    st.info(f"Each file preserves all {original_cols} original columns from your data")
+                    st.info(f"Each file includes all {original_cols} columns: table_name, attr_name, business_name, attr_description and other original columns")
                     
                     # Display download buttons for each file
                     st.subheader("📥 Download Individual Files")
