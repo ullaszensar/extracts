@@ -178,6 +178,8 @@ def main():
                     if result['success']:
                         st.session_state.processed_data = result['data']
                         st.session_state.processing_stats = result.get('stats', {})
+                        st.session_state.fuzzy_algorithm = fuzzy_algorithm
+                        st.session_state.fuzzy_threshold = fuzzy_threshold
                         st.session_state.processing_complete = True
                         st.success("✅ Data processed successfully!")
                         st.rerun()
