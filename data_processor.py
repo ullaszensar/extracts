@@ -85,13 +85,19 @@ class DataProcessor:
             demographic_rows_extracted = len(demographic_data)
             non_demographic_rows = original_columns_total - demographic_rows_extracted
             
-            # Use demographic data as-is
+            # Use demographic data as-is, preserving ALL original columns
             merged_data = demographic_data.copy()
-            merged_data['table_name'] = 'N/A'
-            merged_data['matched'] = True
+            # Only add metadata columns if they don't exist in original data
+            if 'table_name' not in merged_data.columns:
+                merged_data['table_name'] = 'N/A'
+            if 'matched' not in merged_data.columns:
+                merged_data['matched'] = True
             
-            # Generate processing summary
-            processing_stats = self.get_processing_summary(merged_data)
+            # Store original column names before adding metadata
+            original_column_names = list(columns_df.columns)
+            
+            # Generate processing summary with original column information
+            processing_stats = self.get_processing_summary(merged_data, original_column_names)
             processing_stats['original_columns_total'] = original_columns_total
             processing_stats['original_table_total'] = original_table_total
             processing_stats['demographic_rows_extracted'] = demographic_rows_extracted
@@ -245,18 +251,23 @@ class DataProcessor:
         
         return False
     
-    def get_processing_summary(self, merged_df: pd.DataFrame) -> Dict[str, Any]:
+    def get_processing_summary(self, merged_df: pd.DataFrame, original_columns_list: List[str] = None) -> Dict[str, Any]:
         """
         Generate a summary of the processing results
         
         Args:
             merged_df: The merged DataFrame
+            original_columns_list: List of original column names from source file
             
         Returns:
             Dictionary containing processing statistics
         """
-        # Get all original columns (excluding added processing columns)
-        original_columns = [col for col in merged_df.columns if col not in ['table_name', 'matched']]
+        # Use provided original columns list or infer from current data
+        if original_columns_list:
+            original_columns = original_columns_list
+        else:
+            # Get all columns excluding added processing columns
+            original_columns = [col for col in merged_df.columns if col not in ['table_name', 'matched']]
         
         summary = {
             'total_records': len(merged_df),

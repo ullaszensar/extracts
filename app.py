@@ -280,9 +280,17 @@ def main():
                     match_rate = (matched_count / len(processed_df)) * 100
                     st.write(f"• Match rate: **{match_rate:.1f}%**")
         
-        # Display the processed data
+        # Display the processed data with original columns only
         st.subheader("📋 Processed Data")
-        st.dataframe(processed_df, use_container_width=True)
+        
+        # Filter to show only original columns from source file
+        original_columns_only = processed_df[[col for col in processed_df.columns if col not in ['table_name', 'matched']]]
+        
+        # Show column preservation info
+        original_col_count = len(original_columns_only.columns)
+        st.info(f"Displaying {len(original_columns_only)} demographic records with all {original_col_count} original columns preserved")
+        
+        st.dataframe(original_columns_only, use_container_width=True)
         
         # Download section
         st.subheader("💾 Download Results")

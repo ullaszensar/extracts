@@ -521,8 +521,11 @@ class ReportGenerator:
         output = io.BytesIO()
         
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Main processed data
-            processed_data.to_excel(writer, sheet_name='Processed_Data', index=False)
+            # Filter out processing columns, keep only original data columns
+            original_data_only = processed_data[[col for col in processed_data.columns if col not in ['table_name', 'matched']]]
+            
+            # Main processed data with only original columns
+            original_data_only.to_excel(writer, sheet_name='Processed_Data', index=False)
             
             # Statistics summary
             stats_df = pd.DataFrame([
@@ -554,7 +557,7 @@ class ReportGenerator:
     
     def create_csv_export(self, processed_data: pd.DataFrame) -> bytes:
         """
-        Create CSV file for export
+        Create CSV file for export with only original columns
         
         Args:
             processed_data: The processed demographic data
@@ -562,8 +565,11 @@ class ReportGenerator:
         Returns:
             CSV file as bytes
         """
+        # Filter out processing columns, keep only original data columns
+        original_data_only = processed_data[[col for col in processed_data.columns if col not in ['table_name', 'matched']]]
+        
         output = io.StringIO()
-        processed_data.to_csv(output, index=False)
+        original_data_only.to_csv(output, index=False)
         return output.getvalue().encode('utf-8')
     
     def create_multiple_excel_files(self, processed_data: pd.DataFrame, records_per_file: int = None) -> List[tuple]:
@@ -597,8 +603,11 @@ class ReportGenerator:
             # Create Excel file for this chunk
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                # Main data sheet
-                chunk_data.to_excel(writer, sheet_name='Demographic_Data', index=False)
+                # Filter out processing columns, keep only original data columns
+                original_data_only = chunk_data[[col for col in chunk_data.columns if col not in ['table_name', 'matched']]]
+                
+                # Main data sheet with only original columns
+                original_data_only.to_excel(writer, sheet_name='Demographic_Data', index=False)
                 
                 # Summary sheet
                 summary_data = {
