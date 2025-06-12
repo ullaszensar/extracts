@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Any, Optional
 import logging
+from fuzzywuzzy import fuzz, process
 
 class DataProcessor:
     """
@@ -9,7 +10,8 @@ class DataProcessor:
     """
     
     def __init__(self, storage_id_col_table: str, storage_id_col_columns: str, 
-                 table_name_col: str, demographic_keywords: List[str]):
+                 table_name_col: str, demographic_keywords: List[str],
+                 fuzzy_algorithm: str = "ratio", fuzzy_threshold: int = 80):
         """
         Initialize the data processor with configuration parameters
         
@@ -18,11 +20,50 @@ class DataProcessor:
             storage_id_col_columns: Column name for storage_id in columns data
             table_name_col: Column name for table names in table data
             demographic_keywords: List of keywords to identify demographic columns
+            fuzzy_algorithm: Algorithm for fuzzy matching ('ratio', 'partial_ratio', 'token_sort_ratio', 'token_set_ratio')
+            fuzzy_threshold: Minimum similarity percentage (0-100) for fuzzy matching
         """
         self.storage_id_col_table = storage_id_col_table
         self.storage_id_col_columns = storage_id_col_columns
         self.table_name_col = table_name_col
         self.demographic_keywords = [keyword.lower() for keyword in demographic_keywords]
+        self.fuzzy_algorithm = fuzzy_algorithm
+        self.fuzzy_threshold = fuzzy_threshold
+        
+        # Define specific demographic data types as provided
+        self.demographic_data_types = [
+            # Name Information
+            "embossed name", "embossed company name", "primary name", "secondary name",
+            "legal name", "dba name", "double byte name",
+            
+            # Personal Demographics
+            "gender", "dob", "date of birth", "birth date",
+            
+            # Identification
+            "gov ids", "government ids", "government identification", "social security",
+            "ssn", "tax id", "identification number",
+            
+            # Address Information
+            "home address", "business address", "alternate address", "temporary address",
+            "other address", "additional addresses", "mailing address", "billing address",
+            "shipping address", "residential address", "work address",
+            
+            # Phone Information
+            "home phone", "alternate home phone", "business phone", "alternate business phone",
+            "mobile phone", "alternate mobile phone", "attorney phone", "fax", "ani phone",
+            "other phone", "additional phone", "cell phone", "work phone", "office phone",
+            "contact number", "telephone", "phone number",
+            
+            # Email Information
+            "servicing email", "estatement email", "business email", "other email address",
+            "additional email", "contact email", "work email", "personal email",
+            "primary email", "secondary email",
+            
+            # Preferences and Dates
+            "preference language cd", "language preference", "preferred language",
+            "member since date", "membership date", "registration date", "enrollment date",
+            "customer since", "account opened"
+        ]
         
     def process_files(self, table_file, columns_file) -> Dict[str, Any]:
         """
@@ -187,7 +228,7 @@ class DataProcessor:
     
     def _identify_demographic_rows_by_description(self, columns_df: pd.DataFrame, attr_desc_col: str) -> pd.Series:
         """
-        Identify rows containing demographic information based on attr_description column content
+        Identify rows containing demographic information based on attr_description column content using fuzzy matching
         
         Args:
             columns_df: Columns data DataFrame
@@ -199,14 +240,54 @@ class DataProcessor:
         # Create a boolean mask for demographic rows
         demographic_mask = pd.Series([False] * len(columns_df), index=columns_df.index)
         
-        # Check each row's attr_description for demographic keywords
+        # Combine user keywords with comprehensive demographic data types
+        all_keywords = list(set(self.demographic_keywords + self.demographic_data_types))
+        
+        # Check each row's attr_description for demographic keywords using fuzzy matching
         for idx, row in columns_df.iterrows():
-            description = str(row.get(attr_desc_col, '')).lower()
-            # Check if any demographic keyword is in the description
-            if any(keyword in description for keyword in self.demographic_keywords):
-                demographic_mask.loc[idx] = True
+            description = str(row.get(attr_desc_col, ''))
+            
+            if description and description.lower() != 'nan':
+                # Use fuzzy matching to find demographic content
+                is_demographic = self._fuzzy_match_demographic(description, all_keywords)
+                demographic_mask.loc[idx] = is_demographic
         
         return demographic_mask
+    
+    def _fuzzy_match_demographic(self, text: str, keywords: List[str]) -> bool:
+        """
+        Use fuzzy matching to determine if text contains demographic information
+        
+        Args:
+            text: Text to analyze
+            keywords: List of demographic keywords to match against
+            
+        Returns:
+            Boolean indicating if text matches demographic criteria
+        """
+        text_lower = text.lower()
+        
+        # Get the fuzzy matching function based on selected algorithm
+        fuzzy_func = getattr(fuzz, self.fuzzy_algorithm, fuzz.ratio)
+        
+        # Check each keyword for fuzzy match
+        for keyword in keywords:
+            # Calculate similarity score
+            score = fuzzy_func(text_lower, keyword.lower())
+            
+            if score >= self.fuzzy_threshold:
+                return True
+            
+            # Also check if keyword is substring (for partial matches)
+            if keyword.lower() in text_lower:
+                return True
+        
+        # Use process.extractOne for best match
+        best_match = process.extractOne(text_lower, keywords, scorer=fuzzy_func)
+        if best_match and best_match[1] >= self.fuzzy_threshold:
+            return True
+        
+        return False
     
     def _merge_with_table_names(self, demographic_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataFrame:
         """

@@ -93,10 +93,67 @@ def main():
             )
             
             demographic_keywords = st.text_area(
-                "Demographic keywords (one per line)",
-                value="age\ngender\nrace\nethnicity\nincome\neducation\nmarital_status\noccupation",
-                help="Keywords to identify demographic data. Will search in 'attr_description' column if available, otherwise in column names"
+                "Additional demographic keywords (one per line)",
+                value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
+                help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
             )
+        
+        # Fuzzy matching configuration
+        st.subheader("🔍 Fuzzy Matching Configuration")
+        
+        fuzzy_col1, fuzzy_col2 = st.columns(2)
+        
+        with fuzzy_col1:
+            fuzzy_algorithm = st.selectbox(
+                "Fuzzy Matching Algorithm",
+                options=["ratio", "partial_ratio", "token_sort_ratio", "token_set_ratio"],
+                index=0,
+                help="Choose the algorithm for fuzzy string matching"
+            )
+            
+            algorithm_descriptions = {
+                "ratio": "Basic string similarity comparison",
+                "partial_ratio": "Best substring match similarity",
+                "token_sort_ratio": "Sorted token comparison",
+                "token_set_ratio": "Set-based token comparison"
+            }
+            
+            st.info(f"**{fuzzy_algorithm}**: {algorithm_descriptions[fuzzy_algorithm]}")
+        
+        with fuzzy_col2:
+            fuzzy_threshold = st.slider(
+                "Accuracy Threshold (%)",
+                min_value=50,
+                max_value=100,
+                value=80,
+                step=5,
+                help="Minimum similarity percentage for fuzzy matching (higher = more strict)"
+            )
+            
+            st.metric("Current Threshold", f"{fuzzy_threshold}%")
+        
+        # Show built-in demographic data types
+        with st.expander("📋 Built-in Demographic Data Types"):
+            st.write("**Name Information:**")
+            st.write("Embossed Name, Primary Name, Legal Name, DBA Name, Double Byte Name")
+            
+            st.write("**Personal Demographics:**")
+            st.write("Gender, DOB (Date of Birth)")
+            
+            st.write("**Identification:**")
+            st.write("Gov IDs, Government Identification")
+            
+            st.write("**Address Information:**")
+            st.write("Home Address, Business Address, Alternate Address, Temporary Address, Other Address")
+            
+            st.write("**Phone Information:**")
+            st.write("Home Phone, Business Phone, Mobile Phone, Attorney Phone, Fax, ANI Phone")
+            
+            st.write("**Email Information:**")
+            st.write("Servicing Email, Estatement Email, Business Email, Other Email Address")
+            
+            st.write("**Preferences:**")
+            st.write("Preference Language CD, Member Since Date")
         
         # Convert demographic keywords to list
         demographic_list = [keyword.strip().lower() for keyword in demographic_keywords.split('\n') if keyword.strip()]
@@ -110,7 +167,9 @@ def main():
                         storage_id_col_table=storage_id_col_table,
                         storage_id_col_columns=storage_id_col_columns,
                         table_name_col=table_name_col,
-                        demographic_keywords=demographic_list
+                        demographic_keywords=demographic_list,
+                        fuzzy_algorithm=fuzzy_algorithm,
+                        fuzzy_threshold=fuzzy_threshold
                     )
                     
                     # Process the data
@@ -194,7 +253,9 @@ def main():
             # Check if attr_description was used
             if 'attr_description' in processed_df.columns:
                 st.write("✓ Used 'attr_description' column content")
-                st.write("✓ Searched for demographic keywords in descriptions")
+                st.write("✓ Applied fuzzy matching algorithm")
+                st.write(f"✓ Algorithm: **{st.session_state.get('fuzzy_algorithm', 'ratio')}**")
+                st.write(f"✓ Threshold: **{st.session_state.get('fuzzy_threshold', 80)}%**")
             else:
                 st.write("✓ Used column name pattern matching")
                 demo_cols = stats.get('demographic_column_names', [])
