@@ -202,12 +202,7 @@ class ReportGenerator:
             </div>
         </div>
 
-        <div class="section">
-            <h2>Matching Performance</h2>
-            <div class="chart-container">
-                {{ matching_chart }}
-            </div>
-        </div>
+
 
         <div class="section">
             <h2>Table Distribution</h2>

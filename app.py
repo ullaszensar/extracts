@@ -263,22 +263,7 @@ def main():
                 else:
                     st.write("No demographic columns identified")
         
-        # Matching statistics
-        if 'matched' in processed_df.columns:
-            matched_count = processed_df['matched'].sum()
-            unmatched_count = len(processed_df) - matched_count
-            
-            st.write("**Storage ID Matching Results:**")
-            match_col1, match_col2 = st.columns(2)
-            
-            with match_col1:
-                st.write(f"• Successfully matched: **{matched_count}** records")
-                st.write(f"• Unmatched records: **{unmatched_count}** records")
-            
-            with match_col2:
-                if len(processed_df) > 0:
-                    match_rate = (matched_count / len(processed_df)) * 100
-                    st.write(f"• Match rate: **{match_rate:.1f}%**")
+        # Skip Storage ID matching results display as requested
         
         # Display the processed data with original columns only
         st.subheader("📋 Processed Data")
