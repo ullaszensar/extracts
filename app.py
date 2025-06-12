@@ -77,48 +77,17 @@ def main():
         # Configuration section
         st.subheader("⚙️ Processing Configuration")
         
-        # Show table file status
+        # Show file status and configuration
         if table_file:
-            st.info("📊 Table data file uploaded - will merge demographic data with table information")
-            col_config1, col_config2 = st.columns(2)
-            
-            with col_config1:
-                storage_id_col_table = st.text_input(
-                    "Storage ID column name in table data",
-                    value="storage_id",
-                    help="The column name that contains storage_id in the table data file"
-                )
-                
-                table_name_col = st.text_input(
-                    "Table name column in table data",
-                    value="table_name",
-                    help="The column name that contains table names in the table data file"
-                )
-            
-            with col_config2:
-                storage_id_col_columns = st.text_input(
-                    "Storage ID column name in columns data",
-                    value="storage_id",
-                    help="The column name that contains storage_id in the columns data file"
-                )
-                
-                demographic_keywords = st.text_area(
-                    "Additional demographic keywords (one per line)",
-                    value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
-                    help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
-                )
+            st.info("📊 Table data file uploaded - additional table information available")
         else:
-            st.warning("📋 Processing with columns data file only - will extract demographic data without table merging")
-            
-            storage_id_col_table = "storage_id"  # Default value when no table file
-            table_name_col = "table_name"  # Default value when no table file
-            storage_id_col_columns = "storage_id"  # Default value when no table file
-            
-            demographic_keywords = st.text_area(
-                "Additional demographic keywords (one per line)",
-                value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
-                help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
-            )
+            st.warning("📋 Processing with columns data file only - extracting demographic data from attr_description column")
+        
+        demographic_keywords = st.text_area(
+            "Additional demographic keywords (one per line)",
+            value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
+            help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
+        )
         
         # Fuzzy matching configuration
         st.subheader("🔍 Fuzzy Matching Configuration")
@@ -186,9 +155,6 @@ def main():
                 with st.spinner("Processing data..."):
                     # Initialize data processor
                     processor = DataProcessor(
-                        storage_id_col_table=storage_id_col_table,
-                        storage_id_col_columns=storage_id_col_columns,
-                        table_name_col=table_name_col,
                         demographic_keywords=demographic_list,
                         fuzzy_algorithm=fuzzy_algorithm,
                         fuzzy_threshold=fuzzy_threshold
