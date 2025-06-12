@@ -71,39 +71,63 @@ def main():
                 st.error("❌ Invalid file format. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file")
     
     # Processing section
-    if table_file and columns_file:
+    if columns_file:
         st.divider()
         
         # Configuration section
         st.subheader("⚙️ Processing Configuration")
         
-        col_config1, col_config2 = st.columns(2)
-        
-        with col_config1:
-            storage_id_col_table = st.text_input(
-                "Storage ID column name in table data",
-                value="storage_id",
-                help="The column name that contains storage_id in the table data file"
-            )
+        # Show table file status
+        if table_file:
+            st.info("📊 Table data file uploaded - will merge demographic data with table information")
+            col_config1, col_config2 = st.columns(2)
             
-            table_name_col = st.text_input(
-                "Table name column in table data",
-                value="table_name",
-                help="The column name that contains table names in the table data file"
-            )
-        
-        with col_config2:
-            storage_id_col_columns = st.text_input(
-                "Storage ID column name in columns data",
-                value="storage_id",
-                help="The column name that contains storage_id in the columns data file"
-            )
+            with col_config1:
+                storage_id_col_table = st.text_input(
+                    "Storage ID column name in table data",
+                    value="storage_id",
+                    help="The column name that contains storage_id in the table data file"
+                )
+                
+                table_name_col = st.text_input(
+                    "Table name column in table data",
+                    value="table_name",
+                    help="The column name that contains table names in the table data file"
+                )
             
-            demographic_keywords = st.text_area(
-                "Additional demographic keywords (one per line)",
-                value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
-                help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
-            )
+            with col_config2:
+                storage_id_col_columns = st.text_input(
+                    "Storage ID column name in columns data",
+                    value="storage_id",
+                    help="The column name that contains storage_id in the columns data file"
+                )
+                
+                demographic_keywords = st.text_area(
+                    "Additional demographic keywords (one per line)",
+                    value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
+                    help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
+                )
+        else:
+            st.warning("📋 Processing with columns data file only - will extract demographic data without table merging")
+            
+            storage_id_col_table = "storage_id"  # Default value when no table file
+            table_name_col = "table_name"  # Default value when no table file
+            
+            col_single1, col_single2 = st.columns(2)
+            
+            with col_single1:
+                storage_id_col_columns = st.text_input(
+                    "Storage ID column name in columns data",
+                    value="storage_id",
+                    help="The column name that contains storage_id in the columns data file"
+                )
+            
+            with col_single2:
+                demographic_keywords = st.text_area(
+                    "Additional demographic keywords (one per line)",
+                    value="embossed name\nprimary name\nlegal name\ngender\ndob\nhome address\nbusiness address\nhome phone\nmobile phone\nservicing email",
+                    help="Extra keywords to identify demographic data. The system includes the standard demographic types by default."
+                )
         
         # Fuzzy matching configuration
         st.subheader("🔍 Fuzzy Matching Configuration")
@@ -179,7 +203,7 @@ def main():
                         fuzzy_threshold=fuzzy_threshold
                     )
                     
-                    # Process the data
+                    # Process the data (table_file can be None)
                     result = processor.process_files(table_file, columns_file)
                     
                     if result['success']:
@@ -378,26 +402,27 @@ def main():
         st.markdown("""
         ### How to use this application:
         
-        1. **Upload Table Data File**: This should contain table names and their corresponding storage_id values
-        2. **Upload Columns Data File**: This should contain demographic information with storage_id for matching
+        1. **Upload Columns Data File** (Required): This should contain demographic information with attr_description column
+        2. **Upload Table Data File** (Optional): This can contain table names and their corresponding storage_id values for merging
         3. **Configure Processing**: 
-           - Specify the column names for storage_id in both files
-           - Specify the table name column in the table data file
+           - If table file is uploaded: Specify column names for storage_id in both files and table name column
+           - If only columns file: Specify storage_id column name in columns data
            - Add custom demographic keywords if needed
         4. **Configure Fuzzy Matching**:
            - Select the fuzzy matching algorithm (ratio, partial_ratio, token_sort_ratio, token_set_ratio)
            - Set the accuracy threshold percentage (50-100%)
-        5. **Process Data**: Click the process button to extract and merge data
+        5. **Process Data**: Click the process button to extract demographic data from attr_description column
         6. **Review Results**: Check the processed data and detailed statistics
         7. **Export Results**:
            - Download complete Excel report with multiple sheets
+           - Download CSV data for easy import
            - Generate comprehensive HTML analysis report with charts and graphs
-           - Export includes processing statistics, table distributions, and detailed breakdowns
         
         ### File Requirements:
-        - Both files must be in Excel (.xlsx, .xls) or CSV (.csv) format
-        - Files must contain the specified storage_id columns for matching
+        - Columns file must be in Excel (.xlsx, .xls) or CSV (.csv) format (Required)
+        - Table file must be in Excel (.xlsx, .xls) or CSV (.csv) format (Optional)
         - Column names should be in the first row
+        - attr_description column is highly recommended for best demographic detection
         
         ### Demographic Detection:
         The application uses two methods to identify demographic data:

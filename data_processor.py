@@ -67,28 +67,38 @@ class DataProcessor:
         
     def process_files(self, table_file, columns_file) -> Dict[str, Any]:
         """
-        Process the uploaded Excel files and return merged demographic data
+        Process the uploaded files and return demographic data (table file is optional)
         
         Args:
-            table_file: Uploaded table data Excel file
-            columns_file: Uploaded columns data Excel file
+            table_file: Uploaded table data file (optional, can be None)
+            columns_file: Uploaded columns data file (required)
             
         Returns:
             Dictionary containing success status, data, and any error messages
         """
         try:
-            # Read the Excel files
-            table_df = self._read_excel_file(table_file, "table data")
+            # Read the columns file (required)
             columns_df = self._read_excel_file(columns_file, "columns data")
             
             # Store original data statistics
             original_columns_total = len(columns_df)
-            original_table_total = len(table_df)
+            original_table_total = 0
             
-            # Validate required columns exist
-            validation_result = self._validate_columns(table_df, columns_df)
-            if not validation_result['valid']:
-                return {'success': False, 'error': validation_result['error']}
+            # Read table file if provided
+            table_df = None
+            if table_file is not None:
+                table_df = self._read_excel_file(table_file, "table data")
+                original_table_total = len(table_df)
+                
+                # Validate required columns exist when table file is provided
+                validation_result = self._validate_columns(table_df, columns_df)
+                if not validation_result['valid']:
+                    return {'success': False, 'error': validation_result['error']}
+            else:
+                # Validate only columns file when table file is not provided
+                validation_result = self._validate_columns_only(columns_df)
+                if not validation_result['valid']:
+                    return {'success': False, 'error': validation_result['error']}
             
             # Extract demographic data from columns file
             demographic_data = self._extract_demographic_data(columns_df)
@@ -100,8 +110,14 @@ class DataProcessor:
             demographic_rows_extracted = len(demographic_data)
             non_demographic_rows = original_columns_total - demographic_rows_extracted
             
-            # Merge with table names
-            merged_data = self._merge_with_table_names(demographic_data, table_df)
+            # Merge with table names if table file is provided
+            if table_df is not None:
+                merged_data = self._merge_with_table_names(demographic_data, table_df)
+            else:
+                # Use demographic data as-is without table name merging
+                merged_data = demographic_data.copy()
+                merged_data['table_name'] = 'N/A'
+                merged_data['matched'] = True  # All records are considered "matched" since no table matching is needed
             
             # Generate processing summary
             processing_stats = self.get_processing_summary(merged_data)
@@ -179,6 +195,25 @@ class DataProcessor:
                 'error': f"Column '{self.table_name_col}' not found in table data. Available columns: {list(table_df.columns)}"
             }
         
+        # Check columns data
+        if self.storage_id_col_columns not in columns_df.columns:
+            return {
+                'valid': False,
+                'error': f"Column '{self.storage_id_col_columns}' not found in columns data. Available columns: {list(columns_df.columns)}"
+            }
+        
+        return {'valid': True}
+    
+    def _validate_columns_only(self, columns_df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Validate that required columns exist in columns DataFrame only
+        
+        Args:
+            columns_df: Columns data DataFrame
+            
+        Returns:
+            Dictionary with validation result and error message if any
+        """
         # Check columns data
         if self.storage_id_col_columns not in columns_df.columns:
             return {
