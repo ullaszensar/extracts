@@ -211,6 +211,13 @@ class ReportGenerator:
             </div>
         </div>
 
+        <div class="section">
+            <h2>Table Analysis Summary</h2>
+            <div class="table-container">
+                {{ table_analysis_table }}
+            </div>
+        </div>
+
         {% if demographic_columns %}
         <div class="section">
             <h2>Demographic Data Types Found</h2>
@@ -331,6 +338,9 @@ class ReportGenerator:
         demographic_columns = self._get_demographic_columns_info(processed_data, stats)
         col_categories = self._categorize_columns(demographic_columns)
         
+        # Create table analysis table
+        table_analysis_table = self._create_table_analysis_table(processed_data)
+        
         # Create sample data table
         sample_data_table = self._create_sample_data_table(processed_data)
         
@@ -349,6 +359,7 @@ class ReportGenerator:
             extraction_chart=extraction_chart,
             matching_chart=matching_chart,
             table_distribution_chart=table_distribution_chart,
+            table_analysis_table=table_analysis_table,
             demographic_columns=demographic_columns,
             col_categories=col_categories,
             sample_data_table=sample_data_table
@@ -451,6 +462,56 @@ class ReportGenerator:
         )
         
         return pyo.plot(fig, output_type='div', include_plotlyjs=False)
+    
+    def _create_table_analysis_table(self, processed_data: pd.DataFrame) -> str:
+        """Create table analysis summary showing total fields and demographic data per table"""
+        if 'table_name' not in processed_data.columns:
+            return "<p>Table analysis not available - no table_name column found in data.</p>"
+        
+        # Group by table_name and count records
+        table_stats = processed_data.groupby('table_name').agg({
+            'attr_name': 'count',  # Total fields in each table
+            'attr_description': lambda x: x.count()  # Non-null demographic descriptions
+        }).reset_index()
+        
+        table_stats.columns = ['Table Name', 'Total Fields', 'Demographic Fields']
+        
+        # Calculate percentage of demographic fields per table
+        table_stats['Demographic %'] = ((table_stats['Demographic Fields'] / table_stats['Total Fields']) * 100).round(1)
+        
+        # Sort by total fields descending
+        table_stats = table_stats.sort_values('Total Fields', ascending=False)
+        
+        # Create HTML table
+        html = """
+        <table>
+            <thead>
+                <tr>
+                    <th>Table Name</th>
+                    <th>Total Fields</th>
+                    <th>Demographic Fields</th>
+                    <th>Demographic %</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        for _, row in table_stats.iterrows():
+            html += f"""
+                <tr>
+                    <td>{row['Table Name']}</td>
+                    <td>{row['Total Fields']}</td>
+                    <td>{row['Demographic Fields']}</td>
+                    <td>{row['Demographic %']}%</td>
+                </tr>
+            """
+        
+        html += """
+            </tbody>
+        </table>
+        """
+        
+        return html
     
     def _get_demographic_columns_info(self, processed_data: pd.DataFrame, stats: Dict[str, Any]) -> List[tuple]:
         """Get demographic columns information"""

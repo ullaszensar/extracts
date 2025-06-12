@@ -290,31 +290,36 @@ def main():
             download_col1, download_col2, download_col3 = st.columns(3)
             
             with download_col1:
-                if st.button("📊 Generate 20 Excel Files", type="primary"):
+                if st.button("📊 Generate & Download 20 Excel Files", type="primary"):
                     with st.spinner("Creating 20 Excel files with all original columns preserved..."):
+                        import zipfile
+                        import io
+                        
                         report_gen = ReportGenerator()
                         excel_files = report_gen.create_multiple_excel_files(processed_df)
+                        
+                        # Create ZIP file containing all Excel files
+                        zip_buffer = io.BytesIO()
+                        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                            for filename, file_data in excel_files:
+                                zip_file.writestr(filename, file_data)
+                        
+                        zip_buffer.seek(0)
                         st.session_state.excel_files = excel_files
+                        st.session_state.zip_data = zip_buffer.getvalue()
                     
                     original_cols = len([col for col in processed_df.columns if col != 'matched'])
                     st.success(f"Generated {len(excel_files)} Excel files ready for download!")
                     st.info(f"Each file includes all {original_cols} columns: table_name, attr_name, business_name, attr_description and other original columns")
                     
-                    # Display download buttons for each file
-                    st.subheader("📥 Download Individual Files")
-                    cols = st.columns(4)  # 4 columns for better layout
-                    
-                    for idx, (filename, file_data) in enumerate(excel_files):
-                        col_idx = idx % 4
-                        with cols[col_idx]:
-                            st.download_button(
-                                label=f"📄 Part {idx+1:02d}",
-                                data=file_data,
-                                file_name=filename,
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                key=f"download_{idx}",
-                                help=f"Download {filename} with all original columns"
-                            )
+                    # Single download button for all files as ZIP
+                    st.download_button(
+                        label="📦 Download All 20 Excel Files (ZIP)",
+                        data=st.session_state.zip_data,
+                        file_name="demographic_data_20_files.zip",
+                        mime="application/zip",
+                        help="Download all 20 Excel files in a single ZIP archive"
+                    )
             
             with download_col2:
                 # Create CSV file for download
