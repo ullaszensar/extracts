@@ -146,21 +146,22 @@ class DataProcessor:
         Returns:
             DataFrame containing only demographic data and storage_id
         """
-        # Identify demographic columns
-        demographic_cols = self._identify_demographic_columns(columns_df.columns)
-        
-        # Always include storage_id column
-        cols_to_extract = [self.storage_id_col_columns] + demographic_cols
-        
-        # Filter DataFrame to include only relevant columns
-        demographic_df = columns_df[cols_to_extract].copy()
+        # Check if attr_description column exists
+        attr_desc_col = 'attr_description'
+        if attr_desc_col not in columns_df.columns:
+            # Fallback to original method if attr_description doesn't exist
+            demographic_cols = self._identify_demographic_columns(columns_df.columns)
+            cols_to_extract = [self.storage_id_col_columns] + demographic_cols
+            demographic_df = columns_df[cols_to_extract].copy()
+        else:
+            # Use attr_description column to identify demographic rows
+            demographic_rows_mask = self._identify_demographic_rows_by_description(columns_df, attr_desc_col)
+            
+            # Filter to demographic rows only
+            demographic_df = columns_df[demographic_rows_mask].copy()
         
         # Remove rows where storage_id is null
         demographic_df = demographic_df.dropna(subset=[self.storage_id_col_columns])
-        
-        # Remove rows where all demographic columns are null
-        if demographic_cols:
-            demographic_df = demographic_df.dropna(subset=demographic_cols, how='all')
         
         return demographic_df
     
@@ -183,6 +184,29 @@ class DataProcessor:
                 demographic_cols.append(col)
         
         return demographic_cols
+    
+    def _identify_demographic_rows_by_description(self, columns_df: pd.DataFrame, attr_desc_col: str) -> pd.Series:
+        """
+        Identify rows containing demographic information based on attr_description column content
+        
+        Args:
+            columns_df: Columns data DataFrame
+            attr_desc_col: Name of the attribute description column
+            
+        Returns:
+            Boolean Series indicating which rows contain demographic data
+        """
+        # Create a boolean mask for demographic rows
+        demographic_mask = pd.Series([False] * len(columns_df), index=columns_df.index)
+        
+        # Check each row's attr_description for demographic keywords
+        for idx, row in columns_df.iterrows():
+            description = str(row.get(attr_desc_col, '')).lower()
+            # Check if any demographic keyword is in the description
+            if any(keyword in description for keyword in self.demographic_keywords):
+                demographic_mask.loc[idx] = True
+        
+        return demographic_mask
     
     def _merge_with_table_names(self, demographic_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataFrame:
         """

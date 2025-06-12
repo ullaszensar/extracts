@@ -95,7 +95,7 @@ def main():
             demographic_keywords = st.text_area(
                 "Demographic keywords (one per line)",
                 value="age\ngender\nrace\nethnicity\nincome\neducation\nmarital_status\noccupation",
-                help="Keywords to identify demographic columns in the data"
+                help="Keywords to identify demographic data. Will search in 'attr_description' column if available, otherwise in column names"
             )
         
         # Convert demographic keywords to list
@@ -190,13 +190,20 @@ def main():
                 st.write(f"• Extraction efficiency: **{stats.get('extraction_percentage', 0)}%**")
         
         with breakdown_col2:
-            st.write("**Demographic Columns Found:**")
-            demo_cols = stats.get('demographic_column_names', [])
-            if demo_cols:
-                for i, col in enumerate(demo_cols, 1):
-                    st.write(f"{i}. {col}")
+            st.write("**Detection Method:**")
+            # Check if attr_description was used
+            if 'attr_description' in processed_df.columns:
+                st.write("✓ Used 'attr_description' column content")
+                st.write("✓ Searched for demographic keywords in descriptions")
             else:
-                st.write("No demographic columns identified")
+                st.write("✓ Used column name pattern matching")
+                demo_cols = stats.get('demographic_column_names', [])
+                if demo_cols:
+                    st.write("**Demographic Columns Found:**")
+                    for i, col in enumerate(demo_cols, 1):
+                        st.write(f"{i}. {col}")
+                else:
+                    st.write("No demographic columns identified")
         
         # Matching statistics
         if 'matched' in processed_df.columns:
@@ -263,8 +270,11 @@ def main():
         - Column names should be in the first row
         
         ### Demographic Detection:
-        The application identifies demographic columns by searching for keywords in column names.
-        You can customize these keywords in the configuration section.
+        The application uses two methods to identify demographic data:
+        1. **Primary Method**: If an 'attr_description' column exists, it searches for demographic keywords within the description text of each row
+        2. **Fallback Method**: If no 'attr_description' column is found, it searches for keywords in column names
+        
+        You can customize the demographic keywords in the configuration section.
         """)
 
 if __name__ == "__main__":
